@@ -1,6 +1,7 @@
 from django.urls import reverse_lazy, reverse
 from lariv.registry import UIRegistry, ComponentRegistry
 from users.models import User
+from django.utils import timezone
 
 # Menus
 UIRegistry.register("tally.TallyMenu")(
@@ -20,8 +21,19 @@ UIRegistry.register("tally.TallyMenu")(
             ),
             ComponentRegistry.get("menu_item")(
                 uid="tally-menu-list",
-                title="All Tallies",
+                title="All Reports",
                 url=reverse_lazy("tally:list"),
+            ),
+            ComponentRegistry.get("menu_item")(
+                uid="tally-menu-daily",
+                title="Fill Daily Report",
+                url=reverse_lazy("tally:daily"),
+            ),
+            ComponentRegistry.get("menu_item")(
+                uid="tally-menu-create",
+                title="Create Tally (Admin)",
+                role=["totschool_admin"],
+                url=reverse_lazy("tally:create"),
             ),
         ],
     )
@@ -69,6 +81,14 @@ UIRegistry.register("tally.TallyFilter")(
         method="get",
         swap="morph",
         children=[
+            ComponentRegistry.get("foreign_key_input")(
+                uid="tally-filter-user",
+                key="user",
+                label="User",
+                model=User,
+                selection_url=reverse_lazy("users:select"),
+                placeholder="Select User",
+            ),
             ComponentRegistry.get("date_input")(
                 uid="tally-filter-date", key="date", label="Date"
             ),
@@ -89,11 +109,108 @@ UIRegistry.register("tally.TallyFilter")(
     )
 )
 
+
 # Forms for Tally
+class DynamicDate:
+    def __str__(self):
+        return timezone.now().date().strftime("%b %d, %Y")
+
+
+def get_tally_common_fields(prefix):
+    return [
+        ComponentRegistry.get("row")(
+            uid=f"{prefix}-visits-appts",
+            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
+            children=[
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-visits", key="visits", label="Visits", required=True
+                ),
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-appointments",
+                    key="appointments",
+                    label="Appointments",
+                    required=True,
+                ),
+            ],
+        ),
+        ComponentRegistry.get("row")(
+            uid=f"{prefix}-leads-calls",
+            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
+            children=[
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-leads", key="leads", label="Leads", required=True
+                ),
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-calls",
+                    key="calls",
+                    label="Calls",
+                    required=True,
+                ),
+            ],
+        ),
+        ComponentRegistry.get("row")(
+            uid=f"{prefix}-demos-letters",
+            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
+            children=[
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-demos",
+                    key="demos",
+                    label="Demonstrations",
+                    required=True,
+                ),
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-letters",
+                    key="letters",
+                    label="Follow Up Letters Sent",
+                    required=True,
+                ),
+            ],
+        ),
+        ComponentRegistry.get("row")(
+            uid=f"{prefix}-followups-proposals",
+            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
+            children=[
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-followups",
+                    key="follow_ups",
+                    label="Follow Ups",
+                    required=True,
+                ),
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-proposals",
+                    key="proposals",
+                    label="Proposals Given",
+                    required=True,
+                ),
+            ],
+        ),
+        ComponentRegistry.get("row")(
+            uid=f"{prefix}-policies-premium",
+            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
+            children=[
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-policies",
+                    key="policies",
+                    label="Policies Sold",
+                    required=True,
+                ),
+                ComponentRegistry.get("text_input")(
+                    uid=f"{prefix}-premium",
+                    key="premium",
+                    label="Premium",
+                    required=True,
+                ),
+            ],
+        ),
+    ]
+
+
 TallyFormFields = ComponentRegistry.get("form")(
     uid="tally-form",
     action=lambda obj: (
-        reverse("tally:update", args=[obj.pk]) if obj else reverse("tally:create")
+        reverse("tally:update", args=[obj.pk])
+        if getattr(obj, "pk", None)
+        else reverse("tally:create")
     ),
     target="#app-layout",
     key="tally",
@@ -115,7 +232,7 @@ TallyFormFields = ComponentRegistry.get("form")(
                     required=True,
                     model=User,
                 ),
-                ComponentRegistry.get("datetime_input")(
+                ComponentRegistry.get("date_input")(
                     uid="tally-form-date",
                     key="date",
                     label="Date",
@@ -123,93 +240,8 @@ TallyFormFields = ComponentRegistry.get("form")(
                 ),
             ],
         ),
-        ComponentRegistry.get("row")(
-            uid="tally-form-visits-appts",
-            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
-            children=[
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-visits", key="visits", label="Visits", required=True
-                ),
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-appointments",
-                    key="appointments",
-                    label="Appointments",
-                    required=True,
-                ),
-            ],
-        ),
-        ComponentRegistry.get("row")(
-            uid="tally-form-leads-calls",
-            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
-            children=[
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-leads", key="leads", label="Leads", required=True
-                ),
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-calls",
-                    key="calls",
-                    label="Calls",
-                    required=True,
-                ),
-            ],
-        ),
-        ComponentRegistry.get("row")(
-            uid="tally-form-demos-letters",
-            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
-            children=[
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-demos",
-                    key="demos",
-                    label="Demonstrations",
-                    required=True,
-                ),
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-letters",
-                    key="letters",
-                    label="Follow Up Letters Sent",
-                    required=True,
-                ),
-            ],
-        ),
-        ComponentRegistry.get("row")(
-            uid="tally-form-followups-proposals",
-            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
-            children=[
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-followups",
-                    key="follow_ups",
-                    label="Follow Ups",
-                    required=True,
-                ),
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-proposals",
-                    key="proposals",
-                    label="Proposals Given",
-                    required=True,
-                ),
-            ],
-        ),
-        ComponentRegistry.get("row")(
-            uid="tally-form-policies-premium",
-            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
-            children=[
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-policies",
-                    key="policies",
-                    label="Policies Sold",
-                    required=True,
-                ),
-                ComponentRegistry.get("text_input")(
-                    uid="tally-form-premium",
-                    key="premium",
-                    label="Premium",
-                    required=True,
-                ),
-            ],
-        ),
-        ComponentRegistry.get("submit_input")(
-            uid="tally-form-submit", label="Save Tally"
-        ),
+        *get_tally_common_fields("tally-form"),
+        ComponentRegistry.get("submit_input")(uid="tally-form-submit", label="Save"),
     ],
 )
 
@@ -229,6 +261,30 @@ UIRegistry.register("tally.TallyUpdateForm")(
     )
 )
 
+TallyDailyFormFields = ComponentRegistry.get("form")(
+    uid="tally-daily-form",
+    action=lambda obj: reverse("tally:daily"),
+    target="#app-layout",
+    key="tally",
+    title="Daily Report",
+    subtitle=DynamicDate(),
+    classes="@container",
+    children=[
+        *get_tally_common_fields("tally-daily-form"),
+        ComponentRegistry.get("submit_input")(
+            uid="tally-daily-form-submit", label="Save"
+        ),
+    ],
+)
+
+UIRegistry.register("tally.TallyDailyForm")(
+    ComponentRegistry.get("scaffold")(
+        uid="tally-daily-scaffold",
+        sidebar_children=[UIRegistry.get("tally.TallyMenu")],
+        children=[TallyDailyFormFields],
+    )
+)
+
 # Tally Table
 UIRegistry.register("tally.TallyTable")(
     ComponentRegistry.get("scaffold")(
@@ -241,7 +297,6 @@ UIRegistry.register("tally.TallyTable")(
                 key="tallies",
                 title="Tallies",
                 subtitle="All Daily Reports",
-                create_url=reverse_lazy("tally:create"),
                 row_url=lambda o: reverse("tally:detail", args=[o.pk]),
                 filter_component=UIRegistry.get("tally.TallyFilter"),
                 columns=[
@@ -410,6 +465,7 @@ UIRegistry.register("tally.TallyDashboard")(
         children=[
             ComponentRegistry.get("form")(
                 uid="tally-dashboard-filter",
+                role=["totschool_admin"],
                 action=reverse_lazy("tally:dashboard"),
                 target="#tally-dashboard-content",
                 method="get",

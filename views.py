@@ -1,5 +1,3 @@
-from django.db.models import Sum, Count, Value, IntegerField
-from django.db.models.functions import Coalesce
 from lariv.mixins import (
     ListViewMixin,
     DetailViewMixin,
@@ -10,6 +8,9 @@ from lariv.mixins import (
 )
 from lariv.registry import ViewRegistry
 from .models import Tally
+from django.utils import timezone
+from django.urls import reverse, reverse_lazy
+from django.core.exceptions import PermissionDenied
 
 
 @ViewRegistry.register("tally.TallyList")
@@ -18,13 +19,50 @@ class TallyList(ListViewMixin):
     component = "tally.TallyTable"
     key = "tallies"
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not (
+            self.request.user.is_superuser
+            or self.request.user.role in ["totschool_admin"]
+        ):
+            queryset = queryset.filter(user=self.request.user)
+        return queryset
+
+
+@ViewRegistry.register("tally.TallyDailyForm")
+class TallyDailyForm(PostFormViewMixin):
+    model = Tally
+    component = "tally.TallyDailyForm"
+    key = "tally"
+    success_url = reverse_lazy("tally:default")
+
+    def get_object(self, pk=None):
+        try:
+            return self.get_queryset().get(
+                user=self.request.user, date=timezone.now().date()
+            )
+        except Tally.DoesNotExist:
+            return None
+
+    def post(self, request, *args, **kwargs):
+        post_data = request.POST.copy()
+        post_data["date"] = timezone.now().date().isoformat()
+        post_data["user"] = request.user.id
+        request.POST = post_data
+        return super().post(request, *args, **kwargs)
+
 
 @ViewRegistry.register("tally.TallyCreate")
 class TallyCreate(PostFormViewMixin):
     model = Tally
     component = "tally.TallyCreateForm"
     key = "tally"
-    success_url_name = "tally:default"
+    success_url = reverse_lazy("tally:default")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not (request.user.is_superuser or request.user.role in ["totschool_admin"]):
+            raise PermissionDenied("Only administrators can perform this action.")
+        return super().dispatch(request, *args, **kwargs)
 
 
 @ViewRegistry.register("tally.TallyView")
@@ -39,7 +77,14 @@ class TallyUpdate(PostFormViewMixin):
     model = Tally
     component = "tally.TallyUpdateForm"
     key = "tally"
-    success_url_name = "tally:detail"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not (request.user.is_superuser or request.user.role in ["totschool_admin"]):
+            raise PermissionDenied("Only administrators can edit tallies.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self, obj):
+        return reverse("tally:detail", kwargs={"pk": obj.pk})
 
 
 @ViewRegistry.register("tally.TallyDelete")
@@ -47,7 +92,12 @@ class TallyDelete(DeleteViewMixin):
     model = Tally
     component = "tally.TallyDeleteForm"
     key = "tally"
-    success_url_name = "tally:default"
+    success_url = reverse_lazy("tally:default")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not (request.user.is_superuser or request.user.role in ["totschool_admin"]):
+            raise PermissionDenied("Only administrators can delete tallies.")
+        return super().dispatch(request, *args, **kwargs)
 
 
 @ViewRegistry.register("tally.TallyDashboard")
@@ -58,57 +108,7 @@ class TallyDashboard(LarivHtmxMixin, BaseView):
 
     def prepare_data(self, request, **kwargs):
         user_id = request.GET.get("user_id", None)
-
-        queryset = Tally.objects.all()
-        if user_id:
-            queryset = queryset.filter(user=user_id)
-
-        totals = queryset.aggregate(
-            total_calls=Coalesce(Sum("calls"), Value(0), output_field=IntegerField()),
-            total_leads=Coalesce(Sum("leads"), Value(0), output_field=IntegerField()),
-            total_visits=Coalesce(Sum("visits"), Value(0), output_field=IntegerField()),
-            total_appointments=Coalesce(
-                Sum("appointments"), Value(0), output_field=IntegerField()
-            ),
-            total_demos=Coalesce(Sum("demos"), Value(0), output_field=IntegerField()),
-            total_letters=Coalesce(
-                Sum("letters"), Value(0), output_field=IntegerField()
-            ),
-            total_follow_ups=Coalesce(
-                Sum("follow_ups"), Value(0), output_field=IntegerField()
-            ),
-            total_proposals=Coalesce(
-                Sum("proposals"), Value(0), output_field=IntegerField()
-            ),
-            total_policies=Coalesce(
-                Sum("policies"), Value(0), output_field=IntegerField()
-            ),
-            total_premium=Coalesce(
-                Sum("premium"), Value(0), output_field=IntegerField()
-            ),
-            forms_filled=Count("id"),
-        )
-
-        # Calculate conversion rates with new ratios
-        appt_visit_ratio = 0
-        demo_appt_ratio = 0
-        policy_demo_ratio = 0
-
-        if totals["total_visits"] > 0:
-            appt_visit_ratio = round(
-                (totals["total_appointments"] / totals["total_visits"]) * 100, 1
-            )
-        if totals["total_appointments"] > 0:
-            demo_appt_ratio = round(
-                (totals["total_demos"] / totals["total_appointments"]) * 100, 1
-            )
-        if totals["total_demos"] > 0:
-            policy_demo_ratio = round(
-                (totals["total_policies"] / totals["total_demos"]) * 100, 1
-            )
-
-        totals["appt_visit_ratio"] = appt_visit_ratio
-        totals["demo_appt_ratio"] = demo_appt_ratio
-        totals["policy_demo_ratio"] = policy_demo_ratio
-
+        if not (request.user.is_superuser or request.user.role in ["totschool_admin"]):
+            user_id = request.user.id
+        totals = Tally.objects.get_dashboard_stats(user_id=user_id)
         return {"dashboard": totals}
