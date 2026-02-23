@@ -53,6 +53,11 @@ UIRegistry.register("tally.TallyMenu")(
                 url=reverse_lazy("tally:dashboard"),
             ),
             ComponentRegistry.get("menu_item")(
+                uid="tally-menu-leaderboard",
+                title="Leaderboard",
+                url=reverse_lazy("tally:leaderboard"),
+            ),
+            ComponentRegistry.get("menu_item")(
                 uid="tally-menu-list",
                 title="All Reports",
                 url=reverse_lazy("tally:list"),
@@ -531,6 +536,55 @@ UIRegistry.register("tally.TallyDashboard")(
             ),
             ComponentRegistry.get("dashboard_content")(
                 uid="tally-dashboard-content",
+            ),
+        ],
+    )
+)
+
+# Leaderboard
+UIRegistry.register("tally.TallyLeaderboard")(
+    ComponentRegistry.get("scaffold")(
+        uid="tally-leaderboard-scaffold",
+        sidebar_children=[UIRegistry.get("tally.TallyMenu")],
+        children=[
+            ComponentRegistry.get("title_field")(
+                uid="tally-leaderboard-title", key="title", classes="mb-4"
+            ),
+            ComponentRegistry.get("form")(
+                uid="tally-leaderboard-filter",
+                role=["totschool_admin"],
+                action=reverse_lazy("tally:leaderboard"),
+                target="#tally-leaderboard-content",
+                method="get",
+                swap="morph",
+                classes="mb-4 border-b border-base-300 pb-4",
+                children=[
+                    ComponentRegistry.get("foreign_key_input")(
+                        uid="tally-leaderboard-user",
+                        key="user_id",
+                        label="Highlight Agent",
+                        model=User,
+                        selection_url=reverse_lazy("users:select"),
+                        placeholder="Select Agent to highlight",
+                        display_attr="name",
+                    ),
+                    ComponentRegistry.get("row")(
+                        uid="tally-leaderboard-actions",
+                        classes="flex gap-2",
+                        children=[
+                            ComponentRegistry.get("submit_input")(
+                                uid="tally-leaderboard-submit",
+                                label="Apply",
+                            ),
+                            ComponentRegistry.get("clear_input")(
+                                uid="tally-leaderboard-clear", label="Clear"
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            ComponentRegistry.get("leaderboard_content")(
+                uid="tally-leaderboard-content",
             ),
         ],
     )

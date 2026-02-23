@@ -74,20 +74,131 @@ class WhatsAppReport(Component):
             lq_val = lq.get(key, 0)
 
             if key == "total_premium":
-                message += f"- {label}: ₹{format_currency(today_val)}/₹{format_currency(qtd_val)}/₹{format_currency(lq_val)}\n"
+                message += f"- {label}: {format_currency(today_val)}/{format_currency(qtd_val)}/{format_currency(lq_val)}\n"
             else:
                 message += f"- {label}: {today_val}/{qtd_val}/{lq_val}\n"
 
         encoded_message = urllib.parse.quote(message)
         whatsapp_url = f"https://wa.me/?text={encoded_message}"
 
-        return f'''
+        return f"""
         <div id="{self.uid}" class="bg-base-200 rounded-box border border-base-300 p-4 mb-4 {self.classes}">
             <h3 class="font-bold text-lg text-base-content mb-2">Today's Report Submitted!</h3>
             <textarea class="textarea textarea-bordered w-full h-[15rem] font-mono text-sm shadow-inner whitespace-pre overflow-y-auto mb-2" readonly>{message}</textarea>
             <a href="{whatsapp_url}" target="_blank" class="btn btn-sm btn-success text-white">Share on WhatsApp</a>
         </div>
+        """
+
+
+@ComponentRegistry.register("leaderboard_card")
+class LeaderboardCard(Component):
+    """Component to render a metric-specific leaderboard."""
+
+    def __init__(
+        self,
+        title: str,
+        metric_key: str,
+        format_as_currency: bool = False,
+        classes: str = "",
+        uid: str = "",
+    ):
+        super().__init__(classes, uid)
+        self.title = title
+        self.metric_key = metric_key
+        self.format_as_currency = format_as_currency
+
+    def render_row(self, rank, name, value, highlight=False):
+        val_str = format_currency(value) if self.format_as_currency else str(value)
+        bg_class = (
+            "bg-primary text-primary-content font-bold" if highlight else "bg-base-100"
+        )
+        return f"""
+        <div class="flex justify-between items-center p-2 rounded {bg_class} mb-1 shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="w-6 text-center text-sm opacity-70">{"-" if rank == "-" else f"#{rank}"}</span>
+                <span class="truncate max-w-[120px] sm:max-w-xs">{name}</span>
+            </div>
+            <span class="font-mono">{val_str}</span>
+        </div>
+        """
+
+    def render_html(self, **kwargs) -> str:
+        ldb = kwargs.get("leaderboards", {}).get(self.metric_key, {})
+        top_5 = ldb.get("top_5", [])
+        current_user = ldb.get("current_user")
+
+        rows_html = []
+        user_in_top_5 = False
+
+        for entry in top_5:
+            is_current = current_user and entry["user_id"] == current_user["user_id"]
+            if is_current:
+                user_in_top_5 = True
+            rows_html.append(
+                self.render_row(
+                    entry["rank"],
+                    entry["user_name"],
+                    entry["value"],
+                    highlight=is_current,
+                )
+            )
+
+        if not rows_html:
+            rows_html.append(
+                '<div class="p-2 text-center text-sm opacity-50 italic">No data</div>'
+            )
+
+        out_of_top_5_html = ""
+        if current_user and not user_in_top_5:
+            out_of_top_5_html = f"""
+            <div class="divider my-1"></div>
+            {self.render_row(current_user["rank"], current_user["user_name"], current_user["value"], highlight=True)}
+            """
+
+        return f'''
+        <div id="{self.uid}" class="bg-base-200 rounded-box border border-base-300 p-4 {self.classes}">
+            <h3 class="font-bold text-lg mb-4 pb-2 border-b border-base-300">{self.title}</h3>
+            <div class="flex flex-col">
+                {"".join(rows_html)}
+                {out_of_top_5_html}
+            </div>
+        </div>
         '''
+
+
+@ComponentRegistry.register("leaderboard_content")
+class LeaderboardContent(Component):
+    """Container for the 4 leaderboard cards."""
+
+    def __init__(self, classes: str = "", uid: str = ""):
+        super().__init__(classes, uid)
+
+    def render_html(self, **kwargs) -> str:
+        cards = [
+            ComponentRegistry.get("leaderboard_card")(
+                uid="ldb-visits", title="Top Visits", metric_key="visits"
+            ),
+            ComponentRegistry.get("leaderboard_card")(
+                uid="ldb-demos", title="Top Demonstrations", metric_key="demos"
+            ),
+            ComponentRegistry.get("leaderboard_card")(
+                uid="ldb-policies", title="Top Policies Sold", metric_key="policies"
+            ),
+            ComponentRegistry.get("leaderboard_card")(
+                uid="ldb-premium",
+                title="Top Premium",
+                metric_key="premium",
+                format_as_currency=True,
+            ),
+        ]
+
+        rendered_cards = "".join([c.render_html(**kwargs) for c in cards])
+
+        return f"""
+        <div id="{self.uid}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 {self.classes}">
+            {rendered_cards}
+        </div>
+        """
 
 
 @ComponentRegistry.register("stat_card")

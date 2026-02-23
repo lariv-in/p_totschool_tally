@@ -137,3 +137,28 @@ class TallyDashboard(LarivHtmxMixin, BaseView):
             whatsapp_report = Tally.objects.get_whatsapp_report_data(user_id=user_id)
 
         return {"dashboard": totals, "whatsapp_report": whatsapp_report}
+
+
+@ViewRegistry.register("tally.TallyLeaderboard")
+class TallyLeaderboard(LarivHtmxMixin, BaseView):
+    model = Tally
+    component = "tally.TallyLeaderboard"
+    key = "leaderboards"
+
+    def prepare_data(self, request, **kwargs):
+        user_id = request.GET.get("user_id", None)
+        if not user_id:
+            user_id = request.user.id
+
+        env = EnvironmentRegistry.get("tally")(request)
+        session = env.get_field_values().get("session")
+        if not session:
+            from .utils import ensure_session_for_date
+
+            session = ensure_session_for_date(timezone.now().date())
+
+        leaderboards = Tally.objects.get_leaderboards(user_id=user_id, session=session)
+        return {
+            "leaderboards": leaderboards,
+            "title": f"Leaderboard for {session.name}",
+        }

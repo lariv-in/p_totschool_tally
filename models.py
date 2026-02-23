@@ -111,6 +111,76 @@ class TallyManager(models.Manager):
             "date": today,
         }
 
+    def get_leaderboards(self, user_id=None, session=None):
+        queryset = self.all()
+        if session:
+            queryset = queryset.filter(date__gte=session.start, date__lte=session.end)
+
+        # Aggregate totals per user
+        user_totals = queryset.values("user__id", "user__name").annotate(
+            total_visits=Coalesce(Sum("visits"), Value(0), output_field=IntegerField()),
+            total_demos=Coalesce(Sum("demos"), Value(0), output_field=IntegerField()),
+            total_policies=Coalesce(
+                Sum("policies"), Value(0), output_field=IntegerField()
+            ),
+            total_premium=Coalesce(
+                Sum("premium"), Value(0), output_field=IntegerField()
+            ),
+        )
+
+        metrics = [
+            ("visits", "total_visits"),
+            ("demos", "total_demos"),
+            ("policies", "total_policies"),
+            ("premium", "total_premium"),
+        ]
+
+        leaderboards = {}
+
+        for metric_name, field_name in metrics:
+            # Sort all users by the specific metric
+            sorted_totals = sorted(
+                user_totals, key=lambda x: x[field_name], reverse=True
+            )
+
+            top_5 = []
+            user_entry = None
+
+            for index, row in enumerate(sorted_totals):
+                rank = index + 1
+                entry = {
+                    "rank": rank,
+                    "user_id": row["user__id"],
+                    "user_name": row["user__name"],
+                    "value": row[field_name],
+                }
+
+                if rank <= 5:
+                    top_5.append(entry)
+
+                if user_id and row["user__id"] == user_id:
+                    user_entry = entry
+
+            # If user has no tallies in session, create a default 0 entry for them
+            if user_id and not user_entry:
+                try:
+                    user = User.objects.get(id=user_id)
+                    user_entry = {
+                        "rank": "-",
+                        "user_id": user.id,
+                        "user_name": user.name,
+                        "value": 0,
+                    }
+                except User.DoesNotExist:
+                    user_entry = None
+
+            leaderboards[metric_name] = {
+                "top_5": top_5,
+                "current_user": user_entry,
+            }
+
+        return leaderboards
+
 
 class Tally(models.Model):
     objects = TallyManager()
