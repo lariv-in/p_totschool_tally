@@ -1,3 +1,4 @@
+from typing import List
 from lariv.registry import ComponentRegistry
 from components.base import Component
 
@@ -21,8 +22,8 @@ def format_currency(amount):
 class WhatsAppReport(Component):
     """Renders the WhatsApp sharing feature."""
 
-    def __init__(self, classes: str = "", uid: str = ""):
-        super().__init__(classes, uid)
+    def __init__(self, classes: str = "", uid: str = "", role: List[str] = []):
+        super().__init__(classes, uid, role)
 
     def render_html(self, **kwargs) -> str:
         report_data = kwargs.get("whatsapp_report")
@@ -101,8 +102,9 @@ class LeaderboardCard(Component):
         format_as_currency: bool = False,
         classes: str = "",
         uid: str = "",
+        role: List[str] = [],
     ):
-        super().__init__(classes, uid)
+        super().__init__(classes, uid, role)
         self.title = title
         self.metric_key = metric_key
         self.format_as_currency = format_as_currency
@@ -170,8 +172,8 @@ class LeaderboardCard(Component):
 class LeaderboardContent(Component):
     """Container for the 4 leaderboard cards."""
 
-    def __init__(self, classes: str = "", uid: str = ""):
-        super().__init__(classes, uid)
+    def __init__(self, classes: str = "", uid: str = "", role: List[str] = []):
+        super().__init__(classes, uid, role)
 
     def render_html(self, **kwargs) -> str:
         cards = [
@@ -220,8 +222,9 @@ class StatCard(Component):
         color: str = "",
         classes: str = "",
         uid: str = "",
+        role: List[str] = [],
     ):
-        super().__init__(classes, uid)
+        super().__init__(classes, uid, role)
         self.title = title
         self.value = value
         self.description = description
@@ -250,8 +253,8 @@ class DashboardContent(Component):
     Reads the 'dashboard' dict from kwargs to populate stat cards.
     """
 
-    def __init__(self, classes: str = "", uid: str = ""):
-        super().__init__(classes, uid)
+    def __init__(self, classes: str = "", uid: str = "", role: List[str] = []):
+        super().__init__(classes, uid, role)
 
     def render_html(self, **kwargs) -> str:
         d = kwargs.get("dashboard", {})
