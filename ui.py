@@ -1,7 +1,40 @@
 from django.urls import reverse_lazy, reverse
-from lariv.registry import UIRegistry, ComponentRegistry
+from lariv.registry import UIRegistry, ComponentRegistry, EnvironmentRegistry
+from lariv.environment import Environment, EnvironmentField
 from users.models import User
 from django.utils import timezone
+from .models import TotSchoolSession
+
+
+@EnvironmentRegistry.register("tally")
+class TallyEnvironment(Environment):
+    """Environment configuration for the Tally app."""
+
+    redirect_url = reverse_lazy("tally:default")
+
+    session = EnvironmentField(
+        model=TotSchoolSession,
+        session_key="session",
+        label="Session",
+    )
+
+    def get_field_values(self):
+        values = super().get_field_values()
+        if not values.get("session"):
+            from .utils import ensure_session_for_date
+
+            values["session"] = ensure_session_for_date(timezone.now().date())
+        return values
+
+    def get_field_data(self):
+        data = super().get_field_data()
+        for field in data:
+            if field["name"] == "session" and not field["value"]:
+                from .utils import ensure_session_for_date
+
+                field["value"] = ensure_session_for_date(timezone.now().date())
+        return data
+
 
 # Menus
 UIRegistry.register("tally.TallyMenu")(

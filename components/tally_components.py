@@ -2,6 +2,94 @@ from lariv.registry import ComponentRegistry
 from components.base import Component
 
 
+def format_currency(amount):
+    """Format number in Indian currency style."""
+    if amount == 0:
+        return "₹0"
+    s = str(amount)
+    if len(s) <= 3:
+        return f"₹{s}"
+    result = s[-3:]
+    s = s[:-3]
+    while s:
+        result = s[-2:] + "," + result
+        s = s[:-2]
+    return f"₹{result}"
+
+
+@ComponentRegistry.register("whatsapp_report")
+class WhatsAppReport(Component):
+    """Renders the WhatsApp sharing feature."""
+
+    def __init__(self, classes: str = "", uid: str = ""):
+        super().__init__(classes, uid)
+
+    def render_html(self, **kwargs) -> str:
+        report_data = kwargs.get("whatsapp_report")
+        if report_data is None:
+            return ""
+
+        import urllib.parse
+        from django.urls import reverse
+
+        if not report_data.get("submitted"):
+            daily_url = reverse("tally:daily")
+            return f'''
+            <div id="{self.uid}" class="rounded-box border border-base-300 p-4 mb-4 {self.classes}">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 class="font-bold text-lg">Daily Report Not Submitted</h3>
+                        <p class="text-base-content/70">You haven't submitted your daily report for today.</p>
+                    </div>
+                    <a href="{daily_url}" class="btn btn-primary" hx-boost="true">Fill Daily Report</a>
+                </div>
+            </div>
+            '''
+
+        date_str = report_data["date"].strftime("%d %b, %Y")
+        metrics = [
+            ("visits", "Visits", "total_visits"),
+            ("appointments", "Appointments", "total_appointments"),
+            ("leads", "Leads", "total_leads"),
+            ("calls", "Calls", "total_calls"),
+            ("demos", "Demonstrations", "total_demos"),
+            ("letters", "Follow Up Letters", "total_letters"),
+            ("followups", "Follow Ups", "total_follow_ups"),
+            ("proposals", "Proposals Given", "total_proposals"),
+            ("policies", "Policies Sold", "total_policies"),
+            ("premium", "Premium", "total_premium"),
+        ]
+
+        today = report_data["today"]
+        qtd = report_data["qtd"]
+        lq = report_data["last_quarter"]
+
+        message = "TOT School Report\n"
+        message += f"Date: {date_str}\n"
+        message += f"Name: {report_data['user_name']}\n\n"
+
+        for p, label, key in metrics:
+            today_val = today.get(key, 0)
+            qtd_val = qtd.get(key, 0)
+            lq_val = lq.get(key, 0)
+
+            if key == "total_premium":
+                message += f"- {label}: ₹{format_currency(today_val)}/₹{format_currency(qtd_val)}/₹{format_currency(lq_val)}\n"
+            else:
+                message += f"- {label}: {today_val}/{qtd_val}/{lq_val}\n"
+
+        encoded_message = urllib.parse.quote(message)
+        whatsapp_url = f"https://wa.me/?text={encoded_message}"
+
+        return f'''
+        <div id="{self.uid}" class="rounded-box border border-base-300 p-4 mb-4 {self.classes}">
+            <h3 class="font-bold text-lg text-base-content mb-2">Today's Report Submitted!</h3>
+            <textarea class="textarea textarea-bordered w-full h-[15rem] font-mono text-sm shadow-inner whitespace-pre overflow-y-auto mb-2" readonly>{message}</textarea>
+            <a href="{whatsapp_url}" target="_blank" class="btn btn-sm btn-success text-white">Share on WhatsApp</a>
+        </div>
+        '''
+
+
 @ComponentRegistry.register("stat_card")
 class StatCard(Component):
     """A stat card component that displays a metric value with title and optional description.
@@ -54,20 +142,6 @@ class DashboardContent(Component):
     def __init__(self, classes: str = "", uid: str = ""):
         super().__init__(classes, uid)
 
-    def _format_currency(self, amount):
-        """Format number in Indian currency style."""
-        if amount == 0:
-            return "₹0"
-        s = str(amount)
-        if len(s) <= 3:
-            return f"₹{s}"
-        result = s[-3:]
-        s = s[:-3]
-        while s:
-            result = s[-2:] + "," + result
-            s = s[:-2]
-        return f"₹{result}"
-
     def render_html(self, **kwargs) -> str:
         d = kwargs.get("dashboard", {})
 
@@ -81,7 +155,7 @@ class DashboardContent(Component):
                 ),
                 ComponentRegistry.get("subtitle_field")(
                     uid="metrics-cards-subtitle",
-                    static_value="Analysis of the current period",
+                    static_value="Analysis of the current quarter",
                 ),
                 ComponentRegistry.get("row")(
                     uid="metrics-cards-row",
@@ -117,10 +191,10 @@ class DashboardContent(Component):
         ).render_html(**kwargs)
 
         metrics = [
-            ("calls", "Calls", "total_calls"),
-            ("leads", "Leads", "total_leads"),
             ("visits", "Visits", "total_visits"),
             ("appointments", "Appointments", "total_appointments"),
+            ("leads", "Leads", "total_leads"),
+            ("calls", "Calls", "total_calls"),
             ("demos", "Demonstrations", "total_demos"),
             ("letters", "Follow Up Letters", "total_letters"),
             ("followups", "Follow Ups", "total_follow_ups"),
@@ -137,7 +211,7 @@ class DashboardContent(Component):
                 ),
                 ComponentRegistry.get("subtitle_field")(
                     uid="tally-stats-subtitle",
-                    static_value="Totals for the current period",
+                    static_value="Totals for the current quarter",
                 ),
                 ComponentRegistry.get("row")(
                     uid="tally-stats-row",
@@ -155,15 +229,20 @@ class DashboardContent(Component):
                 ComponentRegistry.get("stat_card")(
                     uid="dash-premium",
                     title="Premium",
-                    value=self._format_currency(d.get("total_premium", 0)),
+                    value=format_currency(d.get("total_premium", 0)),
                     description="",
                     color="success",
                 ),
             ],
         ).render_html(**kwargs)
 
+        whatsapp_section = ComponentRegistry.get("whatsapp_report")(
+            uid="dash-whatsapp-report"
+        ).render_html(**kwargs)
+
         return f"""
         <div id="{self.uid}">
+            {whatsapp_section}
             {metrics_cards}
             {tally_stats}
         </div>

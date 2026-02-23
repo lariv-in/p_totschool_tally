@@ -12,10 +12,12 @@ def get_current_date():
 
 
 class TallyManager(models.Manager):
-    def get_dashboard_stats(self, user_id=None):
+    def get_dashboard_stats(self, user_id=None, session=None):
         queryset = self.all()
         if user_id:
             queryset = queryset.filter(user=user_id)
+        if session:
+            queryset = queryset.filter(date__gte=session.start, date__lte=session.end)
 
         totals = queryset.aggregate(
             total_calls=Coalesce(Sum("calls"), Value(0), output_field=IntegerField()),
@@ -66,6 +68,48 @@ class TallyManager(models.Manager):
         totals["policy_demo_ratio"] = policy_demo_ratio
 
         return totals
+
+    def get_whatsapp_report_data(self, user_id=None):
+        if not user_id:
+            return None
+
+        today = timezone.now().date()
+        today_qs = self.filter(user=user_id, date=today)
+
+        if not today_qs.exists():
+            return {"submitted": False}
+
+        from .utils import ensure_session_for_date
+        import datetime
+
+        class DummySession:
+            def __init__(self, start, end):
+                self.start = start
+                self.end = end
+
+        today_session = DummySession(today, today)
+        today_totals = self.get_dashboard_stats(user_id=user_id, session=today_session)
+
+        current_quarter = ensure_session_for_date(today)
+        qtd_session = DummySession(current_quarter.start, today)
+        qtd_totals = self.get_dashboard_stats(user_id=user_id, session=qtd_session)
+
+        last_quarter_date = current_quarter.start - datetime.timedelta(days=1)
+        last_quarter_session = ensure_session_for_date(last_quarter_date)
+        last_quarter_totals = self.get_dashboard_stats(
+            user_id=user_id, session=last_quarter_session
+        )
+
+        user = User.objects.get(id=user_id)
+
+        return {
+            "submitted": True,
+            "today": today_totals,
+            "qtd": qtd_totals,
+            "last_quarter": last_quarter_totals,
+            "user_name": user.name,
+            "date": today,
+        }
 
 
 class Tally(models.Model):
