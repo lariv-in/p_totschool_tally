@@ -35,7 +35,7 @@ class WhatsAppReport(Component):
         if not report_data.get("submitted"):
             daily_url = reverse("tally:daily")
             return f'''
-            <div id="{self.uid}" class="rounded-box border border-base-300 p-4 mb-4 {self.classes}">
+            <div id="{self.uid}" class="bg-base-200 rounded-box border border-base-300 p-4 mb-4 {self.classes}">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h3 class="font-bold text-lg">Daily Report Not Submitted</h3>
@@ -82,7 +82,7 @@ class WhatsAppReport(Component):
         whatsapp_url = f"https://wa.me/?text={encoded_message}"
 
         return f'''
-        <div id="{self.uid}" class="rounded-box border border-base-300 p-4 mb-4 {self.classes}">
+        <div id="{self.uid}" class="bg-base-200 rounded-box border border-base-300 p-4 mb-4 {self.classes}">
             <h3 class="font-bold text-lg text-base-content mb-2">Today's Report Submitted!</h3>
             <textarea class="textarea textarea-bordered w-full h-[15rem] font-mono text-sm shadow-inner whitespace-pre overflow-y-auto mb-2" readonly>{message}</textarea>
             <a href="{whatsapp_url}" target="_blank" class="btn btn-sm btn-success text-white">Share on WhatsApp</a>

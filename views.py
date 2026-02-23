@@ -131,7 +131,9 @@ class TallyDashboard(LarivHtmxMixin, BaseView):
         totals = Tally.objects.get_dashboard_stats(user_id=user_id, session=session)
 
         whatsapp_report = None
-        if user_id:
+        if user_id and not (
+            request.user.is_superuser or request.user.role in ["totschool_admin"]
+        ):
             whatsapp_report = Tally.objects.get_whatsapp_report_data(user_id=user_id)
 
         return {"dashboard": totals, "whatsapp_report": whatsapp_report}
