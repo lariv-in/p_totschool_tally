@@ -151,11 +151,13 @@ class LeaderboardCard(Component):
             )
 
         out_of_top_5_html = ""
-        if current_user and not user_in_top_5:
+        if current_user and not user_in_top_5 and current_user["value"]:
             out_of_top_5_html = f"""
             <div class="divider my-1"></div>
             {self.render_row(current_user["rank"], current_user["user_name"], current_user["value"], highlight=True)}
             """
+
+
 
         return f'''
         <div id="{self.uid}" class="bg-base-200 rounded-box border border-base-300 p-4 {self.classes}">
