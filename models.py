@@ -98,7 +98,7 @@ class Tally(models.Model):
 
 
 class TotSchoolSession(models.Model):
-    name = models.CharField(max_length=250)
+    name = models.CharField(max_length=250, unique=True)
     start = models.DateField()
     end = models.DateField()
 

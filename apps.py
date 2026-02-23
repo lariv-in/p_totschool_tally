@@ -10,3 +10,4 @@ class TotschoolTallyConfig(AppConfig):
 
     def ready(self):
         from . import components, ui  # noqa: F401
+        from . import signals  # noqa: F401
