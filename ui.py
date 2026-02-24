@@ -146,58 +146,6 @@ UIRegistry.register("tally.TallyFilter")(
 )
 
 
-@UIRegistry.register("tally.TallyFilter")
-class TallyFilter(UI):
-    def build_ui():
-        return Form(
-            uid="tally-filter",
-            action=reverse_lazy("tally:list"),
-            target="#tally-table_display_content",
-            method="get",
-            swap="morph",
-            children=[
-                ForeignKeyInput(
-                    uid="tally-filter-user",
-                    key="user",
-                    label="User",
-                    model=User,
-                    selection_url=reverse_lazy("users:select"),
-                    placeholder="Select User",
-                ),
-                DateInput(uid="tally-filter-date", key="date", label="Date"),
-                Row(
-                    uid="tally-filter-actions",
-                    classes="flex gap-2",
-                    children=[
-                        SubmitInput(
-                            uid="tally-filter-submit",
-                            label="Apply",
-                        ),
-                        ClearInput(uid="tally-filter-clear", label="Clear"),
-                    ],
-                ),
-            ],
-        )
-
-
-@UIRegistry.register("tally.TallyFilter")
-class PatchedTallyFilter(TallyFilter):
-    def build_ui(self):
-        return (
-            super()
-            .build_ui()
-            .children.append(
-                Row(
-                    uid="tally-filter-actions",
-                    classes="flex gap-2",
-                    children=[
-                        SubmitInput(uid="tally-filter-submit", label="Apply"),
-                    ],
-                )
-            )
-        )
-
-
 # Forms for Tally
 class DynamicDate:
     def __str__(self):
