@@ -1,6 +1,6 @@
 from typing import List
-from lariv.registry import ComponentRegistry
 from components.base import Component
+from components import *  # noqa
 
 
 def format_currency(amount):
@@ -18,7 +18,6 @@ def format_currency(amount):
     return f"₹{result}"
 
 
-@ComponentRegistry.register("whatsapp_report")
 class WhatsAppReport(Component):
     """Renders the WhatsApp sharing feature."""
 
@@ -91,7 +90,6 @@ class WhatsAppReport(Component):
         """
 
 
-@ComponentRegistry.register("leaderboard_card")
 class LeaderboardCard(Component):
     """Component to render a metric-specific leaderboard."""
 
@@ -157,8 +155,6 @@ class LeaderboardCard(Component):
             {self.render_row(current_user["rank"], current_user["user_name"], current_user["value"], highlight=True)}
             """
 
-
-
         return f'''
         <div id="{self.uid}" class="bg-base-200 rounded-box border border-base-300 p-4 {self.classes}">
             <h3 class="font-bold text-lg mb-4 pb-2 border-b border-base-300">{self.title}</h3>
@@ -170,7 +166,6 @@ class LeaderboardCard(Component):
         '''
 
 
-@ComponentRegistry.register("leaderboard_content")
 class LeaderboardContent(Component):
     """Container for the 4 leaderboard cards."""
 
@@ -179,16 +174,14 @@ class LeaderboardContent(Component):
 
     def render_html(self, **kwargs) -> str:
         cards = [
-            ComponentRegistry.get("leaderboard_card")(
-                uid="ldb-visits", title="Top Visits", metric_key="visits"
-            ),
-            ComponentRegistry.get("leaderboard_card")(
+            LeaderboardCard(uid="ldb-visits", title="Top Visits", metric_key="visits"),
+            LeaderboardCard(
                 uid="ldb-demos", title="Top Demonstrations", metric_key="demos"
             ),
-            ComponentRegistry.get("leaderboard_card")(
+            LeaderboardCard(
                 uid="ldb-policies", title="Top Policies Sold", metric_key="policies"
             ),
-            ComponentRegistry.get("leaderboard_card")(
+            LeaderboardCard(
                 uid="ldb-premium",
                 title="Top Premium",
                 metric_key="premium",
@@ -205,7 +198,6 @@ class LeaderboardContent(Component):
         """
 
 
-@ComponentRegistry.register("stat_card")
 class StatCard(Component):
     """A stat card component that displays a metric value with title and optional description.
 
@@ -248,7 +240,6 @@ class StatCard(Component):
         """
 
 
-@ComponentRegistry.register("dashboard_content")
 class DashboardContent(Component):
     """Renders the full dashboard layout with Performance Summary and Detailed Metrics.
 
@@ -261,41 +252,41 @@ class DashboardContent(Component):
     def render_html(self, **kwargs) -> str:
         d = kwargs.get("dashboard", {})
 
-        metrics_cards = ComponentRegistry.get("column")(
+        metrics_cards = Column(
             uid="metrics-cards-column",
             classes="mb-4",
             children=[
-                ComponentRegistry.get("title_field")(
+                TitleField(
                     uid="metrics-cards-title",
                     static_value="Performance Summary",
                 ),
-                ComponentRegistry.get("subtitle_field")(
+                SubtitleField(
                     uid="metrics-cards-subtitle",
                     static_value="Analysis of the current quarter",
                 ),
-                ComponentRegistry.get("row")(
+                Row(
                     uid="metrics-cards-row",
                     classes="grid grid-cols-2 lg:grid-cols-4 gap-2 my-2",
                     children=[
-                        ComponentRegistry.get("stat_card")(
+                        StatCard(
                             uid="dash-appt-visit",
                             title="Appt. conversion",
                             value=f"{d.get('appt_visit_ratio', 0)}%",
                             description="Appt. / Visit Ratio",
                         ),
-                        ComponentRegistry.get("stat_card")(
+                        StatCard(
                             uid="dash-demo-appt",
                             title="Demo conversion",
                             value=f"{d.get('demo_appt_ratio', 0)}%",
                             description="Demo / Appt. Ratio",
                         ),
-                        ComponentRegistry.get("stat_card")(
+                        StatCard(
                             uid="dash-policy-demo",
                             title="Policy conversion",
                             value=f"{d.get('policy_demo_ratio', 0)}%",
                             description="Policy / Demo Ratio",
                         ),
-                        ComponentRegistry.get("stat_card")(
+                        StatCard(
                             uid="dash-forms-filled",
                             title="Forms Filled",
                             value=str(d.get("forms_filled", 0)),
@@ -318,22 +309,22 @@ class DashboardContent(Component):
             ("policies", "Policies Sold", "total_policies"),
         ]
 
-        tally_stats = ComponentRegistry.get("column")(
+        tally_stats = Column(
             uid="tally-stats-column",
             children=[
-                ComponentRegistry.get("title_field")(
+                TitleField(
                     uid="tally-stats-title",
                     static_value="Statistics",
                 ),
-                ComponentRegistry.get("subtitle_field")(
+                SubtitleField(
                     uid="tally-stats-subtitle",
                     static_value="Totals for the current quarter",
                 ),
-                ComponentRegistry.get("row")(
+                Row(
                     uid="tally-stats-row",
                     classes="grid grid-cols-2 md:grid-cols-3 gap-2 my-2",
                     children=[
-                        ComponentRegistry.get("stat_card")(
+                        StatCard(
                             uid=f"dash-{metric[0]}",
                             title=metric[1],
                             value=d.get(metric[2], 0),
@@ -342,7 +333,7 @@ class DashboardContent(Component):
                         for metric in metrics
                     ],
                 ),
-                ComponentRegistry.get("stat_card")(
+                StatCard(
                     uid="dash-premium",
                     title="Premium",
                     value=format_currency(d.get("total_premium", 0)),
@@ -352,9 +343,9 @@ class DashboardContent(Component):
             ],
         ).render_html(**kwargs)
 
-        whatsapp_section = ComponentRegistry.get("whatsapp_report")(
-            uid="dash-whatsapp-report"
-        ).render_html(**kwargs)
+        whatsapp_section = WhatsAppReport(uid="dash-whatsapp-report").render_html(
+            **kwargs
+        )
 
         return f"""
         <div id="{self.uid}">

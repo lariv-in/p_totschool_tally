@@ -1,9 +1,11 @@
 from django.urls import reverse_lazy, reverse
-from lariv.registry import UIRegistry, ComponentRegistry, EnvironmentRegistry
+from lariv.registry import UIRegistry, EnvironmentRegistry
 from lariv.environment import Environment, EnvironmentField
 from users.models import User
 from django.utils import timezone
 from .models import TotSchoolSession
+from components import *  # noqa
+from .components.tally_components import *  # noqa
 
 
 @EnvironmentRegistry.register("tally")
@@ -38,36 +40,36 @@ class TallyEnvironment(Environment):
 
 # Menus
 UIRegistry.register("tally.TallyMenu")(
-    ComponentRegistry.get("menu")(
+    Menu(
         uid="tally-menu",
         title="Tally",
-        back=ComponentRegistry.get("menu_item")(
+        back=MenuItem(
             uid="tally-menu-back",
             title="Back to All Apps",
             url=reverse_lazy("apps"),
         ),
         children=[
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-menu-dashboard",
                 title="Dashboard",
                 url=reverse_lazy("tally:dashboard"),
             ),
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-menu-leaderboard",
                 title="Leaderboard",
                 url=reverse_lazy("tally:leaderboard"),
             ),
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-menu-list",
                 title="All Reports",
                 url=reverse_lazy("tally:list"),
             ),
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-menu-daily",
                 title="Fill Daily Report",
                 url=reverse_lazy("tally:daily"),
             ),
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-menu-create",
                 title="Create Tally (Admin)",
                 role=["totschool_admin"],
@@ -78,9 +80,9 @@ UIRegistry.register("tally.TallyMenu")(
 )
 
 UIRegistry.register("tally.TallyDetailMenu")(
-    ComponentRegistry.get("menu")(
+    Menu(
         uid="tally-detail-menu",
-        back=ComponentRegistry.get("menu_item")(
+        back=MenuItem(
             uid="tally-detail-menu-back",
             title="Back to all Tallies",
             url=reverse_lazy("tally:default"),
@@ -88,19 +90,19 @@ UIRegistry.register("tally.TallyDetailMenu")(
         key="tally",
         title=lambda o: f"Tally: {o.user.name} ({o.date})",
         children=[
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-detail-menu-detail",
                 title="Tally Detail",
                 key="tally",
                 url=lambda o: reverse("tally:detail", args=[o.pk]),
             ),
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-detail-menu-edit",
                 title="Edit Tally",
                 key="tally",
                 url=lambda o: reverse("tally:update", args=[o.pk]),
             ),
-            ComponentRegistry.get("menu_item")(
+            MenuItem(
                 uid="tally-detail-menu-delete",
                 title="Delete Tally",
                 key="tally",
@@ -112,14 +114,14 @@ UIRegistry.register("tally.TallyDetailMenu")(
 
 # Filters for Tally
 UIRegistry.register("tally.TallyFilter")(
-    ComponentRegistry.get("form")(
+    Form(
         uid="tally-filter",
         action=reverse_lazy("tally:list"),
         target="#tally-table_display_content",
         method="get",
         swap="morph",
         children=[
-            ComponentRegistry.get("foreign_key_input")(
+            ForeignKeyInput(
                 uid="tally-filter-user",
                 key="user",
                 label="User",
@@ -127,25 +129,73 @@ UIRegistry.register("tally.TallyFilter")(
                 selection_url=reverse_lazy("users:select"),
                 placeholder="Select User",
             ),
-            ComponentRegistry.get("date_input")(
-                uid="tally-filter-date", key="date", label="Date"
-            ),
-            ComponentRegistry.get("row")(
+            DateInput(uid="tally-filter-date", key="date", label="Date"),
+            Row(
                 uid="tally-filter-actions",
                 classes="flex gap-2",
                 children=[
-                    ComponentRegistry.get("submit_input")(
+                    SubmitInput(
                         uid="tally-filter-submit",
                         label="Apply",
                     ),
-                    ComponentRegistry.get("clear_input")(
-                        uid="tally-filter-clear", label="Clear"
-                    ),
+                    ClearInput(uid="tally-filter-clear", label="Clear"),
                 ],
             ),
         ],
     )
 )
+
+
+@UIRegistry.register("tally.TallyFilter")
+class TallyFilter(UI):
+    def build_ui():
+        return Form(
+            uid="tally-filter",
+            action=reverse_lazy("tally:list"),
+            target="#tally-table_display_content",
+            method="get",
+            swap="morph",
+            children=[
+                ForeignKeyInput(
+                    uid="tally-filter-user",
+                    key="user",
+                    label="User",
+                    model=User,
+                    selection_url=reverse_lazy("users:select"),
+                    placeholder="Select User",
+                ),
+                DateInput(uid="tally-filter-date", key="date", label="Date"),
+                Row(
+                    uid="tally-filter-actions",
+                    classes="flex gap-2",
+                    children=[
+                        SubmitInput(
+                            uid="tally-filter-submit",
+                            label="Apply",
+                        ),
+                        ClearInput(uid="tally-filter-clear", label="Clear"),
+                    ],
+                ),
+            ],
+        )
+
+
+@UIRegistry.register("tally.TallyFilter")
+class PatchedTallyFilter(TallyFilter):
+    def build_ui(self):
+        return (
+            super()
+            .build_ui()
+            .children.append(
+                Row(
+                    uid="tally-filter-actions",
+                    classes="flex gap-2",
+                    children=[
+                        SubmitInput(uid="tally-filter-submit", label="Apply"),
+                    ],
+                )
+            )
+        )
 
 
 # Forms for Tally
@@ -156,14 +206,14 @@ class DynamicDate:
 
 def get_tally_common_fields(prefix):
     return [
-        ComponentRegistry.get("row")(
+        Row(
             uid=f"{prefix}-visits-appts",
             classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
             children=[
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-visits", key="visits", label="Visits", required=True
                 ),
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-appointments",
                     key="appointments",
                     label="Appointments",
@@ -171,14 +221,14 @@ def get_tally_common_fields(prefix):
                 ),
             ],
         ),
-        ComponentRegistry.get("row")(
+        Row(
             uid=f"{prefix}-leads-calls",
             classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
             children=[
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-leads", key="leads", label="Leads", required=True
                 ),
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-calls",
                     key="calls",
                     label="Calls",
@@ -186,17 +236,17 @@ def get_tally_common_fields(prefix):
                 ),
             ],
         ),
-        ComponentRegistry.get("row")(
+        Row(
             uid=f"{prefix}-demos-letters",
             classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
             children=[
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-demos",
                     key="demos",
                     label="Demonstrations",
                     required=True,
                 ),
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-letters",
                     key="letters",
                     label="Follow Up Letters Sent",
@@ -204,17 +254,17 @@ def get_tally_common_fields(prefix):
                 ),
             ],
         ),
-        ComponentRegistry.get("row")(
+        Row(
             uid=f"{prefix}-followups-proposals",
             classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
             children=[
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-followups",
                     key="follow_ups",
                     label="Follow Ups",
                     required=True,
                 ),
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-proposals",
                     key="proposals",
                     label="Proposals Given",
@@ -222,17 +272,17 @@ def get_tally_common_fields(prefix):
                 ),
             ],
         ),
-        ComponentRegistry.get("row")(
+        Row(
             uid=f"{prefix}-policies-premium",
             classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
             children=[
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-policies",
                     key="policies",
                     label="Policies Sold",
                     required=True,
                 ),
-                ComponentRegistry.get("text_input")(
+                TextInput(
                     uid=f"{prefix}-premium",
                     key="premium",
                     label="Premium",
@@ -244,14 +294,14 @@ def get_tally_common_fields(prefix):
 
 
 UIRegistry.register("tally.TallyFormFields")(
-    ComponentRegistry.get("column")(
+    Column(
         uid="tally-form-fields",
         children=[
-            ComponentRegistry.get("row")(
+            Row(
                 uid="tally-form-user-row",
                 classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
                 children=[
-                    ComponentRegistry.get("foreign_key_input")(
+                    ForeignKeyInput(
                         uid="tally-form-user",
                         key="user",
                         label="Agent",
@@ -261,7 +311,7 @@ UIRegistry.register("tally.TallyFormFields")(
                         required=True,
                         model=User,
                     ),
-                    ComponentRegistry.get("date_input")(
+                    DateInput(
                         uid="tally-form-date",
                         key="date",
                         label="Date",
@@ -270,17 +320,17 @@ UIRegistry.register("tally.TallyFormFields")(
                 ],
             ),
             *get_tally_common_fields("tally-form"),
-            ComponentRegistry.get("submit_input")(uid="tally-form-submit", label="Save"),
+            SubmitInput(uid="tally-form-submit", label="Save"),
         ],
     )
 )
 
 UIRegistry.register("tally.TallyCreateForm")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-create-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyMenu")],
         children=[
-            ComponentRegistry.get("form")(
+            Form(
                 uid="tally-create-form",
                 action=reverse_lazy("tally:create"),
                 target="#app-layout",
@@ -295,11 +345,11 @@ UIRegistry.register("tally.TallyCreateForm")(
 )
 
 UIRegistry.register("tally.TallyUpdateForm")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-update-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyDetailMenu")],
         children=[
-            ComponentRegistry.get("form")(
+            Form(
                 uid="tally-update-form",
                 action=lambda obj: reverse("tally:update", args=[obj.pk]),
                 target="#app-layout",
@@ -313,7 +363,7 @@ UIRegistry.register("tally.TallyUpdateForm")(
     )
 )
 
-TallyDailyFormFields = ComponentRegistry.get("form")(
+TallyDailyFormFields = Form(
     uid="tally-daily-form",
     action=lambda obj: reverse("tally:daily"),
     target="#app-layout",
@@ -323,14 +373,12 @@ TallyDailyFormFields = ComponentRegistry.get("form")(
     classes="@container",
     children=[
         *get_tally_common_fields("tally-daily-form"),
-        ComponentRegistry.get("submit_input")(
-            uid="tally-daily-form-submit", label="Save"
-        ),
+        SubmitInput(uid="tally-daily-form-submit", label="Save"),
     ],
 )
 
 UIRegistry.register("tally.TallyDailyForm")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-daily-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyMenu")],
         children=[TallyDailyFormFields],
@@ -339,11 +387,11 @@ UIRegistry.register("tally.TallyDailyForm")(
 
 # Tally Table
 UIRegistry.register("tally.TallyTable")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-table-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyMenu")],
         children=[
-            ComponentRegistry.get("table")(
+            Table(
                 uid="tally-table",
                 classes="w-full",
                 key="tallies",
@@ -352,35 +400,31 @@ UIRegistry.register("tally.TallyTable")(
                 row_url=lambda o: reverse("tally:detail", args=[o.pk]),
                 filter_component=UIRegistry.get("tally.TallyFilter"),
                 columns=[
-                    ComponentRegistry.get("table_column")(
+                    TableColumn(
                         uid="tally-col-user",
                         label="Agent",
                         key="user",
-                        component=ComponentRegistry.get("text_field")(
-                            uid="tally-col-user-field", key="user"
-                        ),
+                        component=TextField(uid="tally-col-user-field", key="user"),
                     ),
-                    ComponentRegistry.get("table_column")(
+                    TableColumn(
                         uid="tally-col-date",
                         label="Date",
                         key="date",
-                        component=ComponentRegistry.get("date_field")(
-                            uid="tally-col-date-field", key="date"
-                        ),
+                        component=DateField(uid="tally-col-date-field", key="date"),
                     ),
-                    ComponentRegistry.get("table_column")(
+                    TableColumn(
                         uid="tally-col-policies",
                         label="Policies Sold",
                         key="policies",
-                        component=ComponentRegistry.get("text_field")(
+                        component=TextField(
                             uid="tally-col-policies-field", key="policies"
                         ),
                     ),
-                    ComponentRegistry.get("table_column")(
+                    TableColumn(
                         uid="tally-col-premium",
                         label="Premium",
                         key="premium",
-                        component=ComponentRegistry.get("text_field")(
+                        component=TextField(
                             uid="tally-col-premium-field", key="premium"
                         ),
                     ),
@@ -392,94 +436,90 @@ UIRegistry.register("tally.TallyTable")(
 
 # Detail View
 UIRegistry.register("tally.TallyDetail")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-detail-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyDetailMenu")],
         children=[
-            ComponentRegistry.get("detail")(
+            Detail(
                 uid="tally-detail-view",
                 key="tally",
                 children=[
-                    ComponentRegistry.get("column")(
+                    Column(
                         uid="tally-detail-column",
                         children=[
-                            ComponentRegistry.get("title_field")(
-                                uid="tally-user", key="user"
-                            ),
-                            ComponentRegistry.get("subtitle_field")(
-                                uid="tally-date", key="date"
-                            ),
-                            ComponentRegistry.get("row")(
+                            TitleField(uid="tally-user", key="user"),
+                            SubtitleField(uid="tally-date", key="date"),
+                            Row(
                                 uid="tally-stats-row",
                                 classes="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4",
                                 children=[
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-visits-label",
                                         title="Visits",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-visits-val", key="visits"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-appts-label",
                                         title="Appointments",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-appts-val", key="appointments"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-leads-label",
                                         title="Leads",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-leads-val", key="leads"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-calls-label",
                                         title="Calls",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-calls-val", key="calls"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-demos-label",
                                         title="Demonstrations",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-demos-val", key="demos"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-letters-label",
                                         title="Letters",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-letters-val", key="letters"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-followups-label",
                                         title="Follow Ups",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-followups-val", key="follow_ups"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-proposals-label",
                                         title="Proposals Given",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-proposals-val", key="proposals"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-policies-label",
                                         title="Policies Sold",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-policies-val", key="policies"
                                         ),
                                     ),
-                                    ComponentRegistry.get("inline_label")(
+                                    InlineLabel(
                                         uid="tally-premium-label",
                                         title="Premium",
-                                        component=ComponentRegistry.get("text_field")(
+                                        component=TextField(
                                             uid="tally-premium-val", key="premium"
                                         ),
                                     ),
@@ -494,11 +534,11 @@ UIRegistry.register("tally.TallyDetail")(
 )
 
 UIRegistry.register("tally.TallyDeleteForm")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-delete-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyDetailMenu")],
         children=[
-            ComponentRegistry.get("delete_confirmation")(
+            DeleteConfirmation(
                 uid="tally-delete-confirmation",
                 key="tally",
                 title="Confirm Deletion",
@@ -511,11 +551,11 @@ UIRegistry.register("tally.TallyDeleteForm")(
 
 # Dashboard
 UIRegistry.register("tally.TallyDashboard")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-dashboard-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyMenu")],
         children=[
-            ComponentRegistry.get("form")(
+            Form(
                 uid="tally-dashboard-filter",
                 role=["totschool_admin"],
                 action=reverse_lazy("tally:dashboard"),
@@ -524,7 +564,7 @@ UIRegistry.register("tally.TallyDashboard")(
                 swap="morph",
                 classes="mb-4 border-b border-base-300 pb-4",
                 children=[
-                    ComponentRegistry.get("foreign_key_input")(
+                    ForeignKeyInput(
                         uid="tally-dashboard-user",
                         key="user_id",
                         label="Agent",
@@ -533,22 +573,20 @@ UIRegistry.register("tally.TallyDashboard")(
                         placeholder="All Agents",
                         display_attr="name",
                     ),
-                    ComponentRegistry.get("row")(
+                    Row(
                         uid="tally-dashboard-actions",
                         classes="flex gap-2",
                         children=[
-                            ComponentRegistry.get("submit_input")(
+                            SubmitInput(
                                 uid="tally-dashboard-submit",
                                 label="Apply",
                             ),
-                            ComponentRegistry.get("clear_input")(
-                                uid="tally-dashboard-clear", label="Clear"
-                            ),
+                            ClearInput(uid="tally-dashboard-clear", label="Clear"),
                         ],
                     ),
                 ],
             ),
-            ComponentRegistry.get("dashboard_content")(
+            DashboardContent(
                 uid="tally-dashboard-content",
             ),
         ],
@@ -557,14 +595,12 @@ UIRegistry.register("tally.TallyDashboard")(
 
 # Leaderboard
 UIRegistry.register("tally.TallyLeaderboard")(
-    ComponentRegistry.get("scaffold")(
+    ScaffoldLayout(
         uid="tally-leaderboard-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyMenu")],
         children=[
-            ComponentRegistry.get("title_field")(
-                uid="tally-leaderboard-title", key="title", classes="mb-4"
-            ),
-            ComponentRegistry.get("form")(
+            TitleField(uid="tally-leaderboard-title", key="title", classes="mb-4"),
+            Form(
                 uid="tally-leaderboard-filter",
                 role=["totschool_admin"],
                 action=reverse_lazy("tally:leaderboard"),
@@ -573,7 +609,7 @@ UIRegistry.register("tally.TallyLeaderboard")(
                 swap="morph",
                 classes="mb-4 border-b border-base-300 pb-4",
                 children=[
-                    ComponentRegistry.get("foreign_key_input")(
+                    ForeignKeyInput(
                         uid="tally-leaderboard-user",
                         key="user_id",
                         label="Highlight Agent",
@@ -582,22 +618,20 @@ UIRegistry.register("tally.TallyLeaderboard")(
                         placeholder="Select Agent to highlight",
                         display_attr="name",
                     ),
-                    ComponentRegistry.get("row")(
+                    Row(
                         uid="tally-leaderboard-actions",
                         classes="flex gap-2",
                         children=[
-                            ComponentRegistry.get("submit_input")(
+                            SubmitInput(
                                 uid="tally-leaderboard-submit",
                                 label="Apply",
                             ),
-                            ComponentRegistry.get("clear_input")(
-                                uid="tally-leaderboard-clear", label="Clear"
-                            ),
+                            ClearInput(uid="tally-leaderboard-clear", label="Clear"),
                         ],
                     ),
                 ],
             ),
-            ComponentRegistry.get("leaderboard_content")(
+            LeaderboardContent(
                 uid="tally-leaderboard-content",
             ),
         ],
