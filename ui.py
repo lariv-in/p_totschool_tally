@@ -243,51 +243,54 @@ def get_tally_common_fields(prefix):
     ]
 
 
-TallyFormFields = ComponentRegistry.get("form")(
-    uid="tally-form",
-    action=lambda obj: (
-        reverse("tally:update", args=[obj.pk])
-        if getattr(obj, "pk", None)
-        else reverse("tally:create")
-    ),
-    target="#app-layout",
-    key="tally",
-    title="Tally Form",
-    subtitle="Log Daily Performance",
-    classes="@container",
-    children=[
-        ComponentRegistry.get("row")(
-            uid="tally-form-user-row",
-            classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
-            children=[
-                ComponentRegistry.get("foreign_key_input")(
-                    uid="tally-form-user",
-                    key="user",
-                    label="Agent",
-                    selection_url=reverse_lazy("users:select"),
-                    display_attr="name",
-                    placeholder="Select Agent",
-                    required=True,
-                    model=User,
-                ),
-                ComponentRegistry.get("date_input")(
-                    uid="tally-form-date",
-                    key="date",
-                    label="Date",
-                    required=True,
-                ),
-            ],
-        ),
-        *get_tally_common_fields("tally-form"),
-        ComponentRegistry.get("submit_input")(uid="tally-form-submit", label="Save"),
-    ],
+UIRegistry.register("tally.TallyFormFields")(
+    ComponentRegistry.get("column")(
+        uid="tally-form-fields",
+        children=[
+            ComponentRegistry.get("row")(
+                uid="tally-form-user-row",
+                classes="grid grid-cols-1 gap-1 @md:grid-cols-2",
+                children=[
+                    ComponentRegistry.get("foreign_key_input")(
+                        uid="tally-form-user",
+                        key="user",
+                        label="Agent",
+                        selection_url=reverse_lazy("users:select"),
+                        display_attr="name",
+                        placeholder="Select Agent",
+                        required=True,
+                        model=User,
+                    ),
+                    ComponentRegistry.get("date_input")(
+                        uid="tally-form-date",
+                        key="date",
+                        label="Date",
+                        required=True,
+                    ),
+                ],
+            ),
+            *get_tally_common_fields("tally-form"),
+            ComponentRegistry.get("submit_input")(uid="tally-form-submit", label="Save"),
+        ],
+    )
 )
 
 UIRegistry.register("tally.TallyCreateForm")(
     ComponentRegistry.get("scaffold")(
         uid="tally-create-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyMenu")],
-        children=[TallyFormFields],
+        children=[
+            ComponentRegistry.get("form")(
+                uid="tally-create-form",
+                action=reverse_lazy("tally:create"),
+                target="#app-layout",
+                key="tally",
+                title="Create Tally",
+                subtitle="Log Daily Performance",
+                classes="@container",
+                children=[UIRegistry.get("tally.TallyFormFields")],
+            )
+        ],
     )
 )
 
@@ -295,7 +298,18 @@ UIRegistry.register("tally.TallyUpdateForm")(
     ComponentRegistry.get("scaffold")(
         uid="tally-update-scaffold",
         sidebar_children=[UIRegistry.get("tally.TallyDetailMenu")],
-        children=[TallyFormFields],
+        children=[
+            ComponentRegistry.get("form")(
+                uid="tally-update-form",
+                action=lambda obj: reverse("tally:update", args=[obj.pk]),
+                target="#app-layout",
+                key="tally",
+                title="Edit Tally Form",
+                subtitle="Update Daily Performance",
+                classes="@container",
+                children=[UIRegistry.get("tally.TallyFormFields")],
+            )
+        ],
     )
 )
 
