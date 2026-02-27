@@ -123,7 +123,7 @@ class TallyFilter(Component):
     def build(self):
         return Form(
             uid="tally-filter",
-            action=reverse_lazy("tally:list"),
+            url=reverse_lazy("tally:list"),
             target="#tally-table_display_content",
             method="get",
             swap="morph",
@@ -133,7 +133,7 @@ class TallyFilter(Component):
                     key="user",
                     label="User",
                     model=User,
-                    selection_url=reverse_lazy("users:select"),
+                    url=reverse_lazy("users:select"),
                     placeholder="Select User",
                 ),
                 DateInput(uid="tally-filter-date", key="date", label="Date"),
@@ -261,7 +261,7 @@ class TallyFormFields(Component):
                             uid="tally-form-user",
                             key="user",
                             label="Agent",
-                            selection_url=reverse_lazy("users:select"),
+                            url=reverse_lazy("users:select"),
                             display_attr="name",
                             placeholder="Select Agent",
                             required=True,
@@ -290,7 +290,7 @@ class TallyCreateForm(Component):
             children=[
                 Form(
                     uid="tally-create-form",
-                    action=reverse_lazy("tally:create"),
+                    url=reverse_lazy("tally:create"),
                     target="#app-layout",
                     key="tally",
                     title="Create Tally",
@@ -311,7 +311,7 @@ class TallyUpdateForm(Component):
             children=[
                 Form(
                     uid="tally-update-form",
-                    action=lambda obj: reverse("tally:update", args=[obj.pk]),
+                    url=lambda obj: reverse("tally:update", args=[obj.pk]),
                     target="#app-layout",
                     key="tally",
                     title="Edit Tally Form",
@@ -332,7 +332,7 @@ class TallyDailyForm(Component):
             children=[
                 Form(
                     uid="tally-daily-form",
-                    action=lambda obj: reverse("tally:daily"),
+                    url=reverse_lazy("tally:daily"),
                     target="#app-layout",
                     key="tally",
                     title="Daily Report",
@@ -361,36 +361,36 @@ class TallyTable(Component):
                     key="tallies",
                     title="Tallies",
                     subtitle="All Daily Reports",
-                    row_url=lambda o: reverse("tally:detail", args=[o.pk]),
+                    url=lambda o: reverse("tally:detail", args=[o.pk]),
                     filter_component=UIRegistry.get("tally.TallyFilter")().build(),
                     columns=[
                         TableColumn(
                             uid="tally-col-user",
                             label="Agent",
                             key="user",
-                            component=TextField(uid="tally-col-user-field", key="user"),
+                            children=[TextField(uid="tally-col-user-field", key="user")],
                         ),
                         TableColumn(
                             uid="tally-col-date",
                             label="Date",
                             key="date",
-                            component=DateField(uid="tally-col-date-field", key="date"),
+                            children=[DateField(uid="tally-col-date-field", key="date")],
                         ),
                         TableColumn(
                             uid="tally-col-policies",
                             label="Policies Sold",
                             key="policies",
-                            component=TextField(
+                            children=[TextField(
                                 uid="tally-col-policies-field", key="policies"
-                            ),
+                            )],
                         ),
                         TableColumn(
                             uid="tally-col-premium",
                             label="Premium",
                             key="premium",
-                            component=TextField(
+                            children=[TextField(
                                 uid="tally-col-premium-field", key="premium"
-                            ),
+                            )],
                         ),
                     ],
                 ),
@@ -422,75 +422,75 @@ class TallyDetail(Component):
                                         InlineLabel(
                                             uid="tally-visits-label",
                                             title="Visits",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-visits-val", key="visits"
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-appts-label",
                                             title="Appointments",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-appts-val",
                                                 key="appointments",
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-leads-label",
                                             title="Leads",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-leads-val", key="leads"
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-calls-label",
                                             title="Calls",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-calls-val", key="calls"
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-demos-label",
                                             title="Demonstrations",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-demos-val", key="demos"
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-letters-label",
                                             title="Letters",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-letters-val", key="letters"
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-followups-label",
                                             title="Follow Ups",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-followups-val",
                                                 key="follow_ups",
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-proposals-label",
                                             title="Proposals Given",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-proposals-val",
                                                 key="proposals",
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-policies-label",
                                             title="Policies Sold",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-policies-val", key="policies"
-                                            ),
+                                            )],
                                         ),
                                         InlineLabel(
                                             uid="tally-premium-label",
                                             title="Premium",
-                                            component=TextField(
+                                            children=[TextField(
                                                 uid="tally-premium-val", key="premium"
-                                            ),
+                                            )],
                                         ),
                                     ],
                                 ),
@@ -514,7 +514,7 @@ class TallyDeleteForm(Component):
                     key="tally",
                     title="Confirm Deletion",
                     message="Are you sure you want to delete this tally entry?",
-                    cancel_url=lambda obj: reverse("tally:detail", args=[obj.pk]),
+                    url=lambda obj: reverse("tally:detail", args=[obj.pk]),
                 ),
             ],
         )
@@ -531,7 +531,7 @@ class TallyDashboard(Component):
                 Form(
                     uid="tally-dashboard-filter",
                     role=["totschool_admin"],
-                    action=reverse_lazy("tally:dashboard"),
+                    url=reverse_lazy("tally:dashboard"),
                     target="#tally-dashboard-content",
                     method="get",
                     swap="morph",
@@ -542,7 +542,7 @@ class TallyDashboard(Component):
                             key="user_id",
                             label="Agent",
                             model=User,
-                            selection_url=reverse_lazy("users:select"),
+                            url=reverse_lazy("users:select"),
                             placeholder="All Agents",
                             display_attr="name",
                         ),
@@ -578,7 +578,7 @@ class TallyLeaderboard(Component):
                 Form(
                     uid="tally-leaderboard-filter",
                     role=["totschool_admin"],
-                    action=reverse_lazy("tally:leaderboard"),
+                    url=reverse_lazy("tally:leaderboard"),
                     target="#tally-leaderboard-content",
                     method="get",
                     swap="morph",
@@ -589,7 +589,7 @@ class TallyLeaderboard(Component):
                             key="user_id",
                             label="Highlight Agent",
                             model=User,
-                            selection_url=reverse_lazy("users:select"),
+                            url=reverse_lazy("users:select"),
                             placeholder="Select Agent to highlight",
                             display_attr="name",
                         ),
